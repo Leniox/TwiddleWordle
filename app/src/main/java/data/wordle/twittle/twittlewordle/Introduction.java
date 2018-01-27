@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Toast;
 
 import agency.tango.materialintroscreen.MaterialIntroActivity;
 import agency.tango.materialintroscreen.MessageButtonBehaviour;
@@ -14,9 +15,8 @@ public class Introduction extends MaterialIntroActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_introduction);
+//        setContentView(R.layout.activity_introduction);
 
-        super.onCreate(savedInstanceState);
         //setContentView(R.layout.activity_main_intro);
         enableLastSlideAlphaExitTransition(false);
         addSlide(new SlideFragmentBuilder()
@@ -67,9 +67,13 @@ public class Introduction extends MaterialIntroActivity {
                 new MessageButtonBehaviour(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        Intent intent1 = new Intent(getApplicationContext(), MainActivity.class);
+                        Intent intent1 = new Intent(getApplicationContext(), MapActivity.class);
                         startActivity(intent1);
                     }
                 }, "Let's Go"));
     }
+
+
 }
+
+

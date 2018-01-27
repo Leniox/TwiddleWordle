@@ -18,13 +18,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        SharedPreferences getPrefs = PreferenceManager
+                .getDefaultSharedPreferences(getBaseContext());
+        SharedPreferences.Editor e = getPrefs.edit();
 
-        Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
+
                 //  Initialize SharedPreferences
-                SharedPreferences getPrefs = PreferenceManager
-                        .getDefaultSharedPreferences(getBaseContext());
+
 
                 //  Create a new boolean and preference and set it to true
                 boolean firstLogIn = getPrefs.getBoolean("firstStart", true);
@@ -37,7 +37,6 @@ public class MainActivity extends AppCompatActivity {
                     startActivity(i);
 
                     //  Make a new preferences editor
-                    SharedPreferences.Editor e = getPrefs.edit();
 
                     //  Edit preference to make it false because we don't want this to run again
                     e.putBoolean("firstStart", false);
@@ -45,41 +44,64 @@ public class MainActivity extends AppCompatActivity {
                     //  Apply changes
                     e.apply();
                 }
-            }
-        });
+                else
+                {
+                    setContentView(R.layout.activity_splash);
+                    final LVBlock mLVBlock = (LVBlock) findViewById(R.id.lv_block);
 
+                    mLVBlock.setViewColor(Color.rgb(245,209,22));
+                    mLVBlock.setShadowColor(Color.GRAY);
+                    mLVBlock.startAnim(750);
+                    new Handler().postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            // This method will be executed once the timer is over
+                            // Start your app main activity
+                            mLVBlock.stopAnim();
+                            // close this activity
+                            Intent intent = new Intent(MainActivity.this, MapActivity.class);
+                            startActivity(intent);
+                            finish();
 
+                            //mProgress.setMessage("Give Us A Moment...");
+                            //mProgress.show();
+                        }
+                    }, ANIMATION_DELAY);
 
-        setContentView(R.layout.activity_splash);
-        final LVBlock mLVBlock = (LVBlock) findViewById(R.id.lv_block);
+                }
 
-        mLVBlock.setViewColor(Color.rgb(245,209,22));
-        mLVBlock.setShadowColor(Color.GRAY);
-        mLVBlock.startAnim(750);
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                // This method will be executed once the timer is over
-                // Start your app main activity
-                mLVBlock.stopAnim();
-                // close this activity
-                Intent intent = new Intent(MainActivity.this, MapActivity.class);
-                startActivity(intent);
-                finish();
-
-                //mProgress.setMessage("Give Us A Moment...");
-                //mProgress.show();
-            }
-        }, ANIMATION_DELAY);
-
-
-
-
-
-
-
-        
     }
+
+
+
+//    @Override
+//    protected void onResume()
+//    {
+//        super.onResume();
+//
+//            }
+//
+//    @Override
+//    protected void onStart() {
+//        super.onStart();
+//
+//
+//
+//    }
+//    @Override
+//    public void onPause() {
+//        super.onPause();
+//        final LVBlock mLVBlock = (LVBlock) findViewById(R.id.lv_block);
+//        mLVBlock.stopAnim();
+//
+//    }
+//
+//
+//    @Override
+//    public void onStop() {
+//        super.onStop();
+//
+//    }
 
 
 }
