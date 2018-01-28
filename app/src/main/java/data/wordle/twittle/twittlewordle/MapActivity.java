@@ -1,16 +1,32 @@
 package data.wordle.twittle.twittlewordle;
 
+import android.app.FragmentTransaction;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import android.support.annotation.NonNull;
+import android.support.design.widget.NavigationView;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 
+import com.google.android.gms.common.GooglePlayServicesNotAvailableException;
+import com.google.android.gms.common.GooglePlayServicesRepairableException;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.places.Place;
+import com.google.android.gms.location.places.ui.PlaceAutocomplete;
 import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
 import com.google.android.gms.location.places.ui.PlaceSelectionListener;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -20,6 +36,7 @@ import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.TileOverlayOptions;
 import com.google.maps.android.heatmaps.HeatmapTileProvider;
@@ -43,6 +60,12 @@ import android.annotation.SuppressLint;
 import android.os.AsyncTask;
 import android.util.Base64;
 import android.util.Log;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.ImageView;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -67,17 +90,23 @@ import com.kennycason.kumo.*;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
-public class MapActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener, GoogleMap.OnCameraMoveStartedListener
+public class MapActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMapClickListener, GoogleMap.OnCameraMoveStartedListener, NavigationView.OnNavigationItemSelectedListener, GoogleMap.OnMarkerClickListener
 {
     protected MapView mapView;
     protected GoogleMap myMap;
     private Location location;
+    private DrawerLayout di;
+    boolean isBearerComputed = false;
+    String [] bearerToken = new String[1];
     private int locationPermissionCode = 5;
+    private static final int PLACE_AUTOCOMPLETE_REQUEST_CODE = 10;
     LinkedHashSet<LatLng> nearByCodes = new LinkedHashSet<>();
     ArrayList<AnalysisResults> individualTweetResults = new ArrayList<>();
     HashMap<LatLng, AnalysisResults> analysisRegionHashMap = new HashMap<>();
     HashMap<LatLng, ArrayList<AnalysisResults>> analysisIndividualTweetMap = new HashMap<>();
     long startTime = 0;
+    ActionBarDrawerToggle toggle;
+    boolean didInitialZoom = false;
 
 
 
@@ -85,13 +114,55 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_map);
-        long startTime = System.currentTimeMillis();
+        setContentView(R.layout.nav_drawer);
+
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        setTitle("");
+
+
+
+        final DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+
+         toggle = new ActionBarDrawerToggle(
+                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+        drawer.addDrawerListener(toggle);
+        toggle.syncState();
+        toggle.setToolbarNavigationClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                drawer.openDrawer(GravityCompat.START);
+            }
+        });
+
+
+        NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
+        navigationView.setNavigationItemSelectedListener(this);
+        Window window = this.getWindow();
+
+// clear FLAG_TRANSLUCENT_STATUS flag:
+        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+
+// add FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS flag to the window
+        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+
+// finally change the color
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            window.setStatusBarColor(this.getResources().getColor(R.color.colorPrimary));
+        }
+
+
+
+
+
+
+        startTime = System.currentTimeMillis();
         location = getLastKnownLocation();
         mapView = (MapView) findViewById(R.id.map1);
         mapView.onCreate(null);
         mapView.onResume();
         mapView.getMapAsync(this);
+
 
         PlaceAutocompleteFragment autocompleteFragment = (PlaceAutocompleteFragment)
                 getFragmentManager().findFragmentById(R.id.place_autocomplete_fragment);
@@ -99,6 +170,10 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         autocompleteFragment.setOnPlaceSelectedListener(new PlaceSelectionListener() {
             @Override
             public void onPlaceSelected(Place place) {
+                //call twitter again with a progress bar.
+                callPlaceAutocompleteActivityIntent();
+
+
 
             }
 
@@ -110,16 +185,48 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     }
 
+
+
+
+
+
+    private void callPlaceAutocompleteActivityIntent() {
+        try {
+            Intent intent =
+                    new PlaceAutocomplete.IntentBuilder(PlaceAutocomplete.MODE_FULLSCREEN)
+                            .build(this);
+            startActivityForResult(intent, PLACE_AUTOCOMPLETE_REQUEST_CODE);
+//PLACE_AUTOCOMPLETE_REQUEST_CODE is integer for request code
+        } catch (GooglePlayServicesRepairableException | GooglePlayServicesNotAvailableException e) {
+            // TODO: Handle the error.
+        }
+
+    }
+
     @Override
     public void onMapReady(GoogleMap googleMap) {
         MapsInitializer.initialize(this);
         myMap = googleMap;
         myMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-        try {
-            zoomToLocation();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if (didInitialZoom == false)
+        {
+            didInitialZoom = true;
+            try {
+                zoomToLocation();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
+        for (LatLng somePlace : nearByCodes)
+        {
+            myMap.addMarker(new MarkerOptions()
+                    .position(somePlace)
+                    .title("Inspect For Detail"));
+
+
+        }
+
+
 
 
     }
@@ -127,24 +234,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private void zoomToLocation() throws InterruptedException {
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
-            int count = 0;
-//            for (LatLng latLng : theMap.keySet())
-//            {
-//                if (count == numCities)
-//                {
-//                    break;
-//                }
-//                count++;
-//                List<LatLng> list = new ArrayList<>();
-//                list.add(latLng);
-//                mProvider = new HeatmapTileProvider.Builder()
-//                        .data(list)
-//                        .radius(50)
-//                        .gradient(theMap.get(latLng))
-//                        .build();
-//                // Add a tile overlay to the map, using the heat map tile provider.
-//                mOverlay = map.addTileOverlay(new TileOverlayOptions().tileProvider(mProvider));
-//            }
+
 
 
             if (location != null) {
@@ -162,7 +252,30 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 boolean didSucceed = findNearByLocations(location);
                 if (didSucceed)
                 {
+
+                    mapView.getMapAsync(this);
+
                     callTwitterAPI();
+
+
+
+
+
+
+
+
+
+
+//                                                callTwitterAPI();
+
+                    //call this in another thread?
+//                    Thread testingThread = new Thread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            callTwitterAPI();
+//
+//                        }
+//                    });
                 }
 
 
@@ -187,11 +300,29 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             }
         }
     }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        //autocompleteFragment.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PLACE_AUTOCOMPLETE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                Place place = PlaceAutocomplete.getPlace(this, data);
+                //CALL TWITTER API HERE.
+                Log.i("Place", "Place:" + place.toString());
+            } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
+                Status status = PlaceAutocomplete.getStatus(this, data);
+                Log.i("Place", status.getStatusMessage());
+            } else if (resultCode == RESULT_CANCELED) {
 
-    private Location getLastKnownLocation() {
+            }
+        }
+    }
+
+
+    protected Location getLastKnownLocation() {
 
         Location bestLocation = null;
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        if ((ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
             LocationManager mLocationManager = (LocationManager) this.getSystemService(LOCATION_SERVICE);
 
             mLocationManager = (LocationManager)this.getApplicationContext().getSystemService(LOCATION_SERVICE);
@@ -215,6 +346,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     @Override
     public void onMapClick(LatLng latLng) {
+
         //toggle the search function at the top.
         //http://api.geonames.org/findNearbyPostalCodes?lat=38.907609&lng=-77.072258&username=leniox77&maxRows=150&radius=15
     }
@@ -290,21 +422,32 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     }
     public void callTwitterAPI()
     {
+        //make a broadcast listner that will change a boolean whenver we call call twitter and whenever we end call twitter. Once
+        //we call it, we set progress dialogs, Once we end it, we show the data.
+
         final HashMap<LatLng, ArrayList<String>> totalTweets = new HashMap<>();
-        final String[] testing = new String[1];
-        Thread th = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                testing[0] = get_bearer();
+        if (isBearerComputed == false)
+        {
+            final String[] testing = new String[1];
+            Thread th = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    testing[0] = get_bearer();
+                    bearerToken = testing;
+                }
+            });
+            th.start();
+            try {
+                th.join();
+                isBearerComputed = true;
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-        });
-        th.start();
-        try {
-            th.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+
         }
-        final String bear_token = testing[0];
+
+
+        final String bear_token = bearerToken[0];
         ArrayList<Thread> threadList = new ArrayList<>();
         final Iterator<LatLng> iter = nearByCodes.iterator();
         while (iter.hasNext())
@@ -391,8 +534,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         long total = endTime - startTime;
         long seconds  = TimeUnit.MILLISECONDS.toSeconds(total) - TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(total));
         System.out.println("total time: " + seconds + "seconds");
-
-        Log.d("TIME", new Long(seconds).toString());
+        Log.d("MyTagGoesHere", "This is my log message at the debug level here");
+        Log.e("MyTagGoesHere", "This is my log message at the error level here");
+        Log.d("MyTagGoesHere", new Long(seconds).toString());
 
 
 
@@ -680,5 +824,38 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     }
 
 
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        // Handle navigation view item clicks here.
+        int id = item.getItemId();
 
+        Intent intent;
+        if (id == R.id.sign_up) {
+            intent = new Intent(this, TwitterSignUp.class);
+
+
+
+
+
+            startActivity(intent);
+
+        } else if (id == R.id.about) {
+            startActivity(new Intent(this, About.class));
+        }
+
+        DrawerLayout drawer = findViewById(R.id.drawer_layout);
+        drawer.closeDrawer(GravityCompat.START);
+        return true;
+    }
+
+    @Override
+    public boolean onMarkerClick(Marker marker) {
+        IndividualTwitterComp individualTwitterComp = new IndividualTwitterComp();
+        individualTwitterComp.analysisRegionHashMap = this.analysisRegionHashMap;
+        individualTwitterComp.thePosiiton = marker.getPosition();
+        Intent intent = new Intent(MapActivity.this, individualTwitterComp.getClass());
+        startActivity(intent);
+
+        return false;
+    }
 }

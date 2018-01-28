@@ -67,10 +67,18 @@ public class Introduction extends MaterialIntroActivity {
                 new MessageButtonBehaviour(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        Intent intent1 = new Intent(getApplicationContext(), MapActivity.class);
+                        Intent intent1 = new Intent(getApplicationContext(), MainActivity.class);
                         startActivity(intent1);
                     }
                 }, "Let's Go"));
+    }
+
+    @Override
+    public void onFinish() {
+        super.onFinish();
+        Intent intent1 = new Intent(getApplicationContext(), MainActivity.class);
+        startActivity(intent1);
+        Toast.makeText(this, "Try this library in your project! :)", Toast.LENGTH_SHORT).show();
     }
 
 
