@@ -46,27 +46,33 @@ public class MainActivity extends AppCompatActivity {
                 }
                 else
                 {
-                    setContentView(R.layout.activity_splash);
-                    final LVBlock mLVBlock = (LVBlock) findViewById(R.id.lv_block);
 
-                    mLVBlock.setViewColor(Color.rgb(245,209,22));
-                    mLVBlock.setShadowColor(Color.GRAY);
-                    mLVBlock.startAnim(750);
-                    new Handler().postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            // This method will be executed once the timer is over
-                            // Start your app main activity
-                            mLVBlock.stopAnim();
-                            // close this activity
-                            Intent intent = new Intent(MainActivity.this, MapActivity.class);
-                            startActivity(intent);
-                            finish();
 
-                            //mProgress.setMessage("Give Us A Moment...");
-                            //mProgress.show();
-                        }
-                    }, ANIMATION_DELAY);
+//                    setContentView(R.layout.activity_splash);
+//                    final LVBlock mLVBlock = (LVBlock) findViewById(R.id.lv_block);
+//
+//                    mLVBlock.setViewColor(Color.rgb(245,209,22));
+//                    mLVBlock.setShadowColor(Color.GRAY);
+//                    mLVBlock.startAnim(750);
+//                    new Handler().postDelayed(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            // This method will be executed once the timer is over
+//                            // Start your app main activity
+//                            mLVBlock.stopAnim();
+//                            // close this activity
+//                            Intent intent = new Intent(MainActivity.this, MapActivity.class);
+//                            startActivity(intent);
+//                            finish();
+//
+//                            //mProgress.setMessage("Give Us A Moment...");
+//                            //mProgress.show();
+//                        }
+//                    }, ANIMATION_DELAY);
+                                                Intent intent = new Intent(MainActivity.this, MapActivity.class);
+                                                startActivity(intent);
+
+
 
                 }
 
